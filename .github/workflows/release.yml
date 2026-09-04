@@ -15,9 +15,7 @@ on:
         type: string
 
 permissions:
-  contents: write
-  packages: write
-  id-token: write
+  contents: read
 
 jobs:
   validate:
@@ -76,7 +74,27 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
+
+      - name: Set release version
+        # Ahead of the build: tsdown injects package.json's version into the
+        # bundle, so bumping afterwards would ship a dist that reports the
+        # repository version while the manifest claims the released one.
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          TARGET_VERSION="${{ needs.validate.outputs.version }}"
+          if [ "$CURRENT_VERSION" != "$TARGET_VERSION" ]; then
+            echo "Updating version from $CURRENT_VERSION to $TARGET_VERSION"
+            npm version "$TARGET_VERSION" --no-git-tag-version
+          else
+            echo "Version $TARGET_VERSION is already set in package.json"
+          fi
+
+      - name: Validate
+        run: |
+          npm run check
+          npm run typecheck
+          npm run test
 
       - name: Build package
         run: npm run build
@@ -100,6 +118,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: [validate, build]
     environment: release
+    permissions:
+      # `contents: write` creates the GitHub release; `id-token: write` signs
+      # the npm provenance attestation.
+      contents: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -112,7 +135,7 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Download build artifacts
         uses: actions/download-artifact@v8
@@ -120,16 +143,29 @@ jobs:
           name: dist-${{ needs.validate.outputs.version }}
           path: dist/
 
-      - name: Update package.json version
+      - name: Set release version
+        # This job has its own checkout, so the manifest needs the same bump
+        # the build job applied before compiling dist/.
         run: |
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           TARGET_VERSION="${{ needs.validate.outputs.version }}"
           if [ "$CURRENT_VERSION" != "$TARGET_VERSION" ]; then
             echo "Updating version from $CURRENT_VERSION to $TARGET_VERSION"
-            npm version $TARGET_VERSION --no-git-tag-version
+            npm version "$TARGET_VERSION" --no-git-tag-version
           else
             echo "Version $TARGET_VERSION is already set in package.json"
           fi
+
+      - name: Verify dist matches the released version
+        # Guards the invariant the ordering above exists to protect.
+        run: |
+          DIST_VERSION=$(node -e "import('./dist/index.js').then(m => console.log(m.VERSION))")
+          TARGET_VERSION="${{ needs.validate.outputs.version }}"
+          if [ "$DIST_VERSION" != "$TARGET_VERSION" ]; then
+            echo "dist reports $DIST_VERSION but releasing $TARGET_VERSION"
+            exit 1
+          fi
+          echo "dist reports $DIST_VERSION"
 
       - name: Publish to NPM
         run: npm publish --provenance --access public

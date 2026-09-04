@@ -15,6 +15,10 @@ This server exposes the platform to MCP-compatible clients such as Claude Code,
 Claude Desktop, and other agent runtimes. It is built on top of
 [@nvisy/sdk](https://github.com/nvisycom/sdk-ts).
 
+> [!NOTE]
+> This release registers no MCP tools yet. The server starts and completes the
+> protocol handshake, but a connected client has nothing to invoke.
+
 ## Installation
 
 ```bash

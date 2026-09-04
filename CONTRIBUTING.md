@@ -11,7 +11,7 @@ Thank you for your interest in contributing to the Nvisy MCP server.
 ## Development Setup
 
 ```bash
-git clone https://github.com/your-username/mcp.git
+git clone https://github.com/nvisycom/mcp.git
 cd mcp
 npm install
 ```
