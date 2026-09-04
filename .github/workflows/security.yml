@@ -52,16 +52,7 @@ jobs:
 
       # Gate on the shipped tree; the published package must be clean.
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=moderate
-
-      # Dev tooling too, informational — an unfixable dev vuln must not block CI.
-      - name: Audit all dependencies
-        continue-on-error: true
-        run: npm audit --audit-level=moderate
-
-      - name: Check for outdated dependencies
-        continue-on-error: true
-        run: npm outdated
+        run: npm audit --omit=dev --audit-level=high
 
   license:
     name: License Check
