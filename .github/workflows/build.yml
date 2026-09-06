@@ -111,8 +111,33 @@ jobs:
           test -f dist/index.d.ts
           test -f dist/stdio.js
 
-      - name: Verify server starts
-        run: node dist/stdio.js
+      # Smoke test the bundle: a real client handshake over stdio, which
+      # catches a broken build that `test -f` cannot.
+      - name: Verify server responds
+        env:
+          NVISY_API_TOKEN: ci-smoke-test-token
+        run: |
+          node --input-type=module -e '
+            import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+            import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+
+            const client = new Client({ name: "ci", version: "1.0.0" });
+            await client.connect(
+              new StdioClientTransport({
+                command: "node",
+                args: ["dist/stdio.js"],
+                env: process.env,
+                stderr: "pipe",
+              }),
+            );
+
+            const { tools } = await client.listTools();
+            console.log(`${tools.length} tools registered`);
+            if (tools.length === 0) {
+              throw new Error("server registered no tools");
+            }
+            await client.close();
+          '
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
