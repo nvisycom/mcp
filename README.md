@@ -15,10 +15,6 @@ This server exposes the platform to MCP-compatible clients such as Claude Code,
 Claude Desktop, and other agent runtimes. It is built on top of
 [@nvisy/sdk](https://github.com/nvisycom/sdk-ts).
 
-> [!NOTE]
-> This release registers no MCP tools yet. The server starts and completes the
-> protocol handshake, but a connected client has nothing to invoke.
-
 ## Installation
 
 ```bash
@@ -57,6 +53,28 @@ Add the server to your configuration file:
 claude mcp add nvisy --env NVISY_API_TOKEN=your-api-token -- npx -y @nvisy/mcp
 ```
 
+## Tools
+
+| Tool | Description |
+| --- | --- |
+| `list_workspaces` | Workspaces the API token can access |
+| `list_pipelines` | Redaction pipelines in a workspace |
+| `list_policies` | Policies deciding what is detected and how it is redacted |
+| `list_files` | Files stored in a workspace |
+| `list_labels` | Entity labels this deployment can detect |
+| `list_detections` | Detection runs, most recent first |
+| `redact_file` | Run a pipeline over a file and wait for the findings |
+| `get_detection` | Poll a detection's status |
+| `get_analysis` | Summarise what a detection found |
+| `apply_redaction` | Write a redacted copy of the file |
+
+A typical run is `list_files` to find a file, `list_pipelines` to choose a
+pipeline, `redact_file` to detect, `get_analysis` to review, then
+`apply_redaction` to produce the redacted output.
+
+Files are uploaded through the Nvisy app or API rather than this server, and no
+tool deletes anything.
+
 ## Configuration
 
 The server is configured through the environment:
@@ -65,6 +83,7 @@ The server is configured through the environment:
 | --- | --- | --- | --- |
 | `NVISY_API_TOKEN` | Yes | — | API token used to authenticate against the Nvisy API |
 | `NVISY_BASE_URL` | No | `https://api.nvisy.com` | Base URL of the Nvisy API |
+| `NVISY_WORKSPACE` | No | — | Default workspace slug; every tool can override it |
 
 ## Features
 

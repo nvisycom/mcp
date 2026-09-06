@@ -8,14 +8,21 @@
  * @module stdio
  */
 
-import { SERVER_NAME, VERSION } from "@/config.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { configFromEnvironment, SERVER_NAME, VERSION } from "@/config.js";
+import { createServer } from "@/server.js";
 
 async function main(): Promise<void> {
-	// Tools and transport wiring land here.
-	process.stderr.write(`${SERVER_NAME} mcp server ${VERSION}\n`);
+	const server = createServer(configFromEnvironment());
+	await server.connect(new StdioServerTransport());
+
+	// stdout carries the protocol, so anything human-readable goes to stderr.
+	process.stderr.write(`${SERVER_NAME} mcp server ${VERSION} ready\n`);
 }
 
 main().catch((error: unknown) => {
-	process.stderr.write(`${String(error)}\n`);
+	process.stderr.write(
+		`${error instanceof Error ? error.message : String(error)}\n`,
+	);
 	process.exit(1);
 });

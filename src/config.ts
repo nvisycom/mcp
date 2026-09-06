@@ -41,4 +41,40 @@ export const ENV = {
 	API_TOKEN: "NVISY_API_TOKEN",
 	/** Base URL of the Nvisy API. */
 	BASE_URL: "NVISY_BASE_URL",
+	/** Default workspace slug, overridable per tool call. */
+	WORKSPACE: "NVISY_WORKSPACE",
 } as const;
+
+/** Resolved server configuration. */
+export interface ServerConfig {
+	/** API token used to authenticate against the Nvisy API. */
+	apiToken: string;
+	/** Base URL of the Nvisy API; omitted to use the SDK default. */
+	baseUrl?: string;
+	/** Default workspace slug applied when a tool call omits one. */
+	workspace?: string;
+}
+
+/**
+ * Reads server configuration from the environment.
+ *
+ * @param env - The environment to read; defaults to `process.env`
+ * @returns The resolved configuration
+ * @throws {Error} If the API token is missing
+ */
+export function configFromEnvironment(
+	env: NodeJS.ProcessEnv = process.env,
+): ServerConfig {
+	const apiToken = env[ENV.API_TOKEN]?.trim();
+	if (!apiToken) {
+		throw new Error(
+			`${ENV.API_TOKEN} is not set. Provide a Nvisy API token to start the server.`,
+		);
+	}
+
+	return {
+		apiToken,
+		baseUrl: env[ENV.BASE_URL]?.trim() || undefined,
+		workspace: env[ENV.WORKSPACE]?.trim() || undefined,
+	};
+}
