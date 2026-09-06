@@ -3,17 +3,15 @@
 [![npm](https://img.shields.io/npm/v/@nvisy/mcp?style=flat-square)](https://www.npmjs.com/package/@nvisy/mcp)
 [![Build](https://img.shields.io/github/actions/workflow/status/nvisycom/mcp/build.yml?branch=main&label=build%20%26%20test&style=flat-square)](https://github.com/nvisycom/mcp/actions/workflows/build.yml)
 
-[Model Context Protocol](https://modelcontextprotocol.io) server for the
-[Nvisy](https://nvisy.com/) multimodal redaction platform.
+[Model Context Protocol](https://modelcontextprotocol.io) server for the [Nvisy](https://nvisy.com/) multimodal redaction platform.
 
 Nvisy detects and removes sensitive information across documents, images, and audio.
 It combines deterministic patterns, NER, computer vision, and LLM-driven classification
 into auditable, policy-driven pipelines built for regulated industries such as
 healthcare, legal, government, and financial services.
 
-This server exposes the platform to MCP-compatible clients such as Claude Code,
-Claude Desktop, and other agent runtimes. It is built on top of
-[@nvisy/sdk](https://github.com/nvisycom/sdk-ts).
+This server gives agent runtimes such as Claude Code and Claude Desktop access to
+those pipelines. It is built on [@nvisy/sdk](https://github.com/nvisycom/sdk-ts).
 
 ## Installation
 
@@ -23,15 +21,19 @@ npm install @nvisy/mcp
 
 ## Quick Start
 
-Run the server directly with `npx`:
+Run the server over stdio:
 
 ```bash
 NVISY_API_TOKEN=your-api-token npx @nvisy/mcp
 ```
 
-### Claude Desktop
+Register it with Claude Code:
 
-Add the server to your configuration file:
+```bash
+claude mcp add nvisy --env NVISY_API_TOKEN=your-api-token -- npx -y @nvisy/mcp
+```
+
+Or add it to a client's configuration file:
 
 ```json
 {
@@ -40,17 +42,29 @@ Add the server to your configuration file:
       "command": "npx",
       "args": ["-y", "@nvisy/mcp"],
       "env": {
-        "NVISY_API_TOKEN": "your-api-token"
+        "NVISY_API_TOKEN": "your-api-token",
+        "NVISY_WORKSPACE": "your-workspace"
       }
     }
   }
 }
 ```
 
-### Claude Code
+The server is configured through the environment:
 
-```bash
-claude mcp add nvisy --env NVISY_API_TOKEN=your-api-token -- npx -y @nvisy/mcp
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `NVISY_API_TOKEN` | Yes | — | API token used to authenticate against the Nvisy API |
+| `NVISY_BASE_URL` | No | `https://api.nvisy.com` | Base URL of the Nvisy API |
+| `NVISY_WORKSPACE` | No | — | Default workspace slug; every tool can override it |
+
+It can also be embedded rather than spawned:
+
+```typescript
+import { createServer } from "@nvisy/mcp";
+
+const server = createServer({ apiToken: "your-api-token" });
+await server.connect(transport);
 ```
 
 ## Tools
@@ -75,21 +89,12 @@ pipeline, `redact_file` to detect, `get_analysis` to review, then
 Files are uploaded through the Nvisy app or API rather than this server, and no
 tool deletes anything.
 
-## Configuration
-
-The server is configured through the environment:
-
-| Variable | Required | Default | Description |
-| --- | --- | --- | --- |
-| `NVISY_API_TOKEN` | Yes | — | API token used to authenticate against the Nvisy API |
-| `NVISY_BASE_URL` | No | `https://api.nvisy.com` | Base URL of the Nvisy API |
-| `NVISY_WORKSPACE` | No | — | Default workspace slug; every tool can override it |
-
 ## Features
 
 - Modern ES2022+ JavaScript target
 - Full TypeScript support with strict typing
 - Runs standalone over stdio, or embedded as a library
+- Progress reporting and cancellation for long-running detections
 - Built on the official Nvisy TypeScript SDK
 
 ## Deployment
@@ -99,10 +104,6 @@ The fastest way to get started is with [Nvisy Cloud](https://nvisy.com).
 To run locally, see the [nvisycom/server](https://github.com/nvisycom/server) (self-hosted backend) and [nvisycom/studio](https://github.com/nvisycom/studio) (web and desktop app) repositories.
 
 If you only need redaction and not the full platform, [nvisycom/elide](https://github.com/nvisycom/elide) is a standalone framework for building PII detection and removal pipelines over multimodal documents.
-
-## Node.js
-
-Requires Node.js 24.0.0 or higher.
 
 ## Contributing
 

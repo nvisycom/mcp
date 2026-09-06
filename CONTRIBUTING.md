@@ -69,6 +69,31 @@ npm run build    # Verify build works
 - [ ] Documentation updated if needed
 - [ ] No breaking changes (or documented)
 
+## Releasing
+
+Releases are cut by pushing a tag. The workflow validates the version, runs the
+checks, builds, publishes to npm with provenance, and creates the GitHub
+release.
+
+1. Land everything for the release on `main`, including a `CHANGELOG.md` entry.
+2. Tag the merge commit and push:
+
+   ```bash
+   git tag v0.44.0
+   git push origin v0.44.0
+   ```
+
+The tag sets the released version: the workflow rewrites `package.json` to match
+it before building, so the published manifest and the version the server reports
+cannot disagree. Keeping `package.json` in step with `main` is still worth doing,
+so the repository is not misleading between releases.
+
+A version containing a hyphen (`0.45.0-rc.1`) is published as a prerelease.
+
+Publishing uses npm trusted publishing over OIDC rather than a stored token, so
+the package must have this repository configured as a trusted publisher on npm,
+and the `release` environment must exist on the repository.
+
 ## Code Standards
 
 - Follow existing TypeScript patterns
