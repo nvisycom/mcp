@@ -58,15 +58,6 @@ The server is configured through the environment:
 | `NVISY_BASE_URL` | No | `https://api.nvisy.com` | Base URL of the Nvisy API |
 | `NVISY_WORKSPACE` | No | — | Default workspace slug; every tool can override it |
 
-It can also be embedded rather than spawned:
-
-```typescript
-import { createServer } from "@nvisy/mcp";
-
-const server = createServer({ apiToken: "your-api-token" });
-await server.connect(transport);
-```
-
 ## Tools
 
 | Tool | Description |
