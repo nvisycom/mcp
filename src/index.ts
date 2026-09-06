@@ -8,4 +8,15 @@
  */
 
 // Configuration
-export { ENV, resolveVersion, SERVER_NAME, VERSION } from "@/config.js";
+export type { ServerConfig } from "@/config.js";
+export {
+	configFromEnvironment,
+	ENV,
+	resolveVersion,
+	SERVER_NAME,
+	VERSION,
+} from "@/config.js";
+// Context
+export { Context } from "@/context.js";
+// Server
+export { createServer } from "@/server.js";
