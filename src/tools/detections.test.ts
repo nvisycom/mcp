@@ -67,6 +67,34 @@ describe("redact_file", () => {
 		expect(client.detections.getDetection.mock.calls.length).toBeLessThan(2);
 	});
 
+	it("does not poll past the deadline", async () => {
+		vi.useFakeTimers();
+		try {
+			const { client, call } = harness(() => detection("executing"));
+
+			const pending = (
+				call as unknown as (
+					a: unknown,
+					e: unknown,
+				) => Promise<{
+					content: { text: string }[];
+				}>
+			)({ fileId: "f1", pipeline: "p" }, extra(new AbortController().signal));
+
+			// Run out the whole poll window.
+			await vi.advanceTimersByTimeAsync(200_000);
+			const result = await pending;
+
+			expect(result.content[0].text).toContain("still running");
+
+			// The last interval ends exactly on the deadline, so the 60th poll
+			// must not be issued: 120s of 2s intervals leaves 59.
+			expect(client.detections.getDetection).toHaveBeenCalledTimes(59);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it("reports progress while the detection runs", async () => {
 		const notify = vi.fn<Notify>(async () => {});
 		const { call } = harness(() => detection("complete"));

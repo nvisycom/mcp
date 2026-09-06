@@ -42,7 +42,7 @@ function describe(detection: Detection): string {
  */
 function delay(ms: number, signal: AbortSignal): Promise<void> {
 	return new Promise((resolve) => {
-		const timer = setTimeout(finish, ms);
+		const timer = setTimeout(finish, Math.max(0, ms));
 		signal.addEventListener("abort", finish, { once: true });
 
 		function finish(): void {
@@ -110,8 +110,11 @@ export function registerDetections(server: McpServer, ctx: Context): void {
 					Date.now() < deadline &&
 					!extra.signal.aborted
 				) {
-					await delay(POLL_INTERVAL_MS, extra.signal);
-					if (extra.signal.aborted) break;
+					// Never sleep past the deadline, and re-check it afterwards so
+					// the last interval cannot start one more request.
+					const remaining = deadline - Date.now();
+					await delay(Math.min(POLL_INTERVAL_MS, remaining), extra.signal);
+					if (extra.signal.aborted || Date.now() >= deadline) break;
 
 					detection = await ctx.client.detections.getDetection(
 						slug,
