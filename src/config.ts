@@ -43,6 +43,8 @@ export const ENV = {
 	BASE_URL: "NVISY_BASE_URL",
 	/** Default workspace slug, overridable per tool call. */
 	WORKSPACE: "NVISY_WORKSPACE",
+	/** Directory uploads may read from; uploads are disabled when unset. */
+	FILES_DIR: "NVISY_FILES_DIR",
 } as const;
 
 /** Resolved server configuration. */
@@ -53,6 +55,8 @@ export interface ServerConfig {
 	baseUrl?: string;
 	/** Default workspace slug applied when a tool call omits one. */
 	workspace?: string;
+	/** Directory uploads may read from; uploads are disabled when unset. */
+	filesDir?: string;
 }
 
 /**
@@ -76,5 +80,6 @@ export function configFromEnvironment(
 		apiToken,
 		baseUrl: env[ENV.BASE_URL]?.trim() || undefined,
 		workspace: env[ENV.WORKSPACE]?.trim() || undefined,
+		filesDir: env[ENV.FILES_DIR]?.trim() || undefined,
 	};
 }

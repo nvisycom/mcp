@@ -5,6 +5,37 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.45.0] - 2026-09-07
+
+### Added
+
+- `upload_file` puts a local file into a workspace, and `redact` uploads,
+  detects and writes the redacted copy in a single call. Both read only from
+  the client's workspace directory, or from `NVISY_FILES_DIR` when set, which
+  takes precedence so a client cannot widen what the operator allowed; a path
+  resolving outside, symlinks included, is refused
+- `describe_pipeline` reports what a pipeline actually detects, resolving its
+  policies and their entity labels
+
+### Changed
+
+- **Breaking:** `redact_file` is now `detect`. It finds entities and does not
+  redact, which the old name implied and the new `redact` tool now does
+
+### Removed
+
+- **Breaking:** `list_policies` and `list_labels`. A policy summary carries no
+  definition, so the listing said nothing about what a policy redacts, and the
+  label catalogue was deployment-wide rather than tied to a pipeline.
+  `describe_pipeline` answers both questions against a specific pipeline
+
+### Notes
+
+- Requires `@nvisy/sdk` 0.45. Its breaking changes are confined to syncs,
+  connections and LLM configuration, none of which this server exposes
+
+[0.45.0]: https://github.com/nvisycom/mcp/compare/v0.44.0...v0.45.0
+
 ## [0.44.0] - 2026-09-07
 
 ### Added

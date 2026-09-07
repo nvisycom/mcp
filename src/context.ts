@@ -4,8 +4,10 @@
  * @module context
  */
 
+import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { Nvisy } from "@nvisy/sdk";
 import { ENV, type ServerConfig } from "@/config.js";
+import { rootPaths } from "@/paths.js";
 
 /**
  * The state a tool handler needs: an authenticated client and the workspace
@@ -18,6 +20,12 @@ export class Context {
 	/** Default workspace slug applied when a tool call omits one. */
 	readonly #workspace: string | undefined;
 
+	/** Directory uploads may read from; overrides the client's roots. */
+	readonly #filesDir: string | undefined;
+
+	/** The connected server, used to ask the client for its roots. */
+	#server: Server | undefined;
+
 	/**
 	 * @param config - Resolved server configuration
 	 */
@@ -27,6 +35,47 @@ export class Context {
 			...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
 		});
 		this.#workspace = config.workspace;
+		this.#filesDir = config.filesDir;
+	}
+
+	/**
+	 * Attaches the server whose client is asked for roots.
+	 *
+	 * @param server - The low-level server backing the MCP server
+	 */
+	attach(server: Server): void {
+		this.#server = server;
+	}
+
+	/**
+	 * The directories a tool call may read from.
+	 *
+	 * An explicitly configured directory wins outright, so a client cannot widen
+	 * what the operator allowed. Otherwise the client's roots are used, which
+	 * makes uploads work unconfigured in clients that report a workspace.
+	 *
+	 * Resolved per call rather than cached: roots change while the server runs,
+	 * and are unavailable until a client has connected.
+	 *
+	 * @returns The allowed directories, empty when neither source supplies any
+	 */
+	async readableDirs(): Promise<string[]> {
+		if (this.#filesDir) {
+			return [this.#filesDir];
+		}
+
+		const server = this.#server;
+		if (!server?.getClientCapabilities()?.roots) {
+			return [];
+		}
+
+		try {
+			const { roots } = await server.listRoots();
+			return rootPaths(roots);
+		} catch {
+			// A client may advertise roots and still fail to serve them.
+			return [];
+		}
 	}
 
 	/** The authenticated Nvisy API client. */

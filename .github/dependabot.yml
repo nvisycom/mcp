@@ -1,47 +1,56 @@
 version: 2
-
 updates:
-  # npm dependencies
+  # Enable version updates for npm
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
+      timezone: "Europe/Berlin"
       day: "monday"
-      time: "06:00"
-    open-pull-requests-limit: 10
+      time: "04:00"
+    open-pull-requests-limit: 5
     labels:
+      - "chore"
       - "dependencies"
     commit-message:
-      prefix: "chore"
-      include: "scope"
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+    rebase-strategy: "auto"
+    versioning-strategy: "increase"
+    # Group patch and minor updates together to reduce PR noise
     groups:
-      # Tooling moves together and is not shipped to consumers, so a single
-      # PR per week keeps the review surface small.
-      dev-dependencies:
-        dependency-type: "development"
+      # vitest and its companion packages share a strict peer dependency and
+      # must move together, majors included, or npm ci fails on the mismatch.
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
         update-types:
+          - "major"
           - "minor"
           - "patch"
-      # Runtime dependencies are grouped for patch/minor only; majors open
-      # individually so breaking changes get their own review.
-      production-dependencies:
-        dependency-type: "production"
+      npm-dependencies:
+        patterns:
+          - "*"
         update-types:
           - "minor"
           - "patch"
 
-  # GitHub Actions used by the workflows
+  # Version updates for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+      timezone: "Europe/Berlin"
       day: "monday"
-      time: "06:00"
+      time: "04:00"
     open-pull-requests-limit: 5
     labels:
+      - "chore"
       - "dependencies"
     commit-message:
-      prefix: "chore"
+      prefix: "chore(actions)"
+    # Group all GitHub Actions updates together to reduce PR noise
     groups:
       github-actions:
         patterns:

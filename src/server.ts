@@ -26,6 +26,12 @@ import { registerTools } from "@/tools/index.js";
  */
 export function createServer(config: ServerConfig): McpServer {
 	const server = new McpServer({ name: SERVER_NAME, version: VERSION });
-	registerTools(server, new Context(config));
+	const ctx = new Context(config);
+
+	// The upload tools ask the client for its roots, which is only possible
+	// through the connected server.
+	ctx.attach(server.server);
+	registerTools(server, ctx);
+
 	return server;
 }

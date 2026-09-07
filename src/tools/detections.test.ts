@@ -34,7 +34,7 @@ function harness(getDetection: () => unknown) {
 	} as unknown as McpServer;
 
 	registerDetections(server, ctx);
-	return { client, call: handlers.get("redact_file") as never };
+	return { client, call: handlers.get("detect") as never };
 }
 
 /** A stand-in for the SDK's notification sender. */
@@ -45,7 +45,7 @@ function extra(signal: AbortSignal, notify: Notify = async () => {}) {
 	return { signal, sendNotification: notify, _meta: { progressToken: 1 } };
 }
 
-describe("redact_file", () => {
+describe("detect", () => {
 	it("stops polling when the request is cancelled", async () => {
 		const controller = new AbortController();
 		const { client, call } = harness(() => detection("executing"));
