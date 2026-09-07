@@ -1,6 +1,6 @@
 {
 	"name": "@nvisy/mcp",
-	"version": "0.44.0",
+	"version": "0.45.0",
 	"description": "Model Context Protocol server for the Nvisy multimodal redaction platform",
 	"type": "module",
 	"private": false,
@@ -73,7 +73,7 @@
 	"dependencies": {
 		"@cfworker/json-schema": "^4.1.1",
 		"@modelcontextprotocol/sdk": "^1.30.0",
-		"@nvisy/sdk": "^0.44.0",
+		"@nvisy/sdk": "^0.45.0",
 		"zod": "^4.5.4"
 	},
 	"devDependencies": {
