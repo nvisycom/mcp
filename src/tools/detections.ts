@@ -12,7 +12,12 @@ import type { Context } from "@/context.js";
 import { guard, text } from "@/errors.js";
 import { fields, list } from "@/format.js";
 import { summarize } from "@/report.js";
-import { AFTER_ARG, LIMIT_ARG, WORKSPACE_ARG } from "@/tools/common.js";
+import {
+	AFTER_ARG,
+	LIMIT_ARG,
+	type ToolExtra,
+	WORKSPACE_ARG,
+} from "@/tools/common.js";
 
 /** How long to wait between polls of a running detection. */
 const POLL_INTERVAL_MS = 2_000;
@@ -53,6 +58,81 @@ function delay(ms: number, signal: AbortSignal): Promise<void> {
 	});
 }
 
+/** How a detection finished, and the detection itself. */
+export interface PollOutcome {
+	detection: Detection;
+	/** Set when the run did not reach a settled state. */
+	unsettled?: "cancelled" | "timeout";
+}
+
+/**
+ * Runs a pipeline over a file and waits for it to settle.
+ *
+ * Shared with the `redact` tool, which detects as its second step.
+ *
+ * @param ctx - Shared tool context
+ * @param workspace - Resolved workspace slug
+ * @param pipeline - Pipeline slug
+ * @param fileId - The file to analyse
+ * @param extra - Cancellation signal and progress channel
+ * @returns The detection, and why waiting stopped if it did not settle
+ */
+export async function detectAndWait(
+	ctx: Context,
+	workspace: string,
+	pipeline: string,
+	fileId: string,
+	extra: ToolExtra,
+): Promise<PollOutcome> {
+	let detection = await ctx.client.detections.createDetection(
+		workspace,
+		pipeline,
+		{ fileId },
+	);
+
+	const progressToken = extra._meta?.progressToken;
+	const started = Date.now();
+	const deadline = started + POLL_TIMEOUT_MS;
+
+	const report = async (): Promise<void> => {
+		if (progressToken === undefined) return;
+		await extra.sendNotification({
+			method: "notifications/progress",
+			params: {
+				progressToken,
+				progress: Date.now() - started,
+				total: POLL_TIMEOUT_MS,
+				message: `Detection ${detection.status}`,
+			},
+		});
+	};
+
+	await report();
+
+	while (
+		!SETTLED.has(detection.status) &&
+		Date.now() < deadline &&
+		!extra.signal.aborted
+	) {
+		// Never sleep past the deadline, and re-check it afterwards so
+		// the last interval cannot start one more request.
+		const remaining = deadline - Date.now();
+		await delay(Math.min(POLL_INTERVAL_MS, remaining), extra.signal);
+		if (extra.signal.aborted || Date.now() >= deadline) break;
+
+		detection = await ctx.client.detections.getDetection(
+			workspace,
+			detection.id,
+		);
+		await report();
+	}
+
+	if (extra.signal.aborted) return { detection, unsettled: "cancelled" };
+	if (!SETTLED.has(detection.status))
+		return { detection, unsettled: "timeout" };
+	return { detection };
+}
+
 /**
  * Registers detection tools.
  *
@@ -61,14 +141,14 @@ function delay(ms: number, signal: AbortSignal): Promise<void> {
  */
 export function registerDetections(server: McpServer, ctx: Context): void {
 	server.registerTool(
-		"redact_file",
+		"detect",
 		{
 			title: "Run a pipeline over a file",
 			description:
-				"Run a redaction pipeline over a file, detecting the sensitive " +
-				"information the pipeline's policies look for. Waits for the run to " +
-				"finish and returns the detection. This only finds entities; call " +
-				"apply_redaction afterwards to produce a redacted file.",
+				"Run a redaction pipeline over an uploaded file, finding the sensitive " +
+				"information its policies look for. Waits for the run to finish. This " +
+				"only finds entities; call apply_redaction to write a redacted copy, " +
+				"or use redact to do both in one step.",
 			inputSchema: {
 				fileId: z.string().describe("The file to analyse, from list_files."),
 				pipeline: z.string().describe("Pipeline slug, from list_pipelines."),
@@ -78,66 +158,26 @@ export function registerDetections(server: McpServer, ctx: Context): void {
 		},
 		async ({ fileId, pipeline, workspace }, extra) =>
 			guard(async () => {
-				const slug = ctx.workspace(workspace);
-				let detection = await ctx.client.detections.createDetection(
-					slug,
+				const { detection, unsettled } = await detectAndWait(
+					ctx,
+					ctx.workspace(workspace),
 					pipeline,
-					{ fileId },
+					fileId,
+					extra,
 				);
 
-				const progressToken = extra._meta?.progressToken;
-				const started = Date.now();
-				const deadline = started + POLL_TIMEOUT_MS;
-
-				/** Reports how far into the poll window this run is. */
-				const report = async (): Promise<void> => {
-					if (progressToken === undefined) return;
-					await extra.sendNotification({
-						method: "notifications/progress",
-						params: {
-							progressToken,
-							progress: Date.now() - started,
-							total: POLL_TIMEOUT_MS,
-							message: `Detection ${detection.status}`,
-						},
-					});
-				};
-
-				await report();
-
-				while (
-					!SETTLED.has(detection.status) &&
-					Date.now() < deadline &&
-					!extra.signal.aborted
-				) {
-					// Never sleep past the deadline, and re-check it afterwards so
-					// the last interval cannot start one more request.
-					const remaining = deadline - Date.now();
-					await delay(Math.min(POLL_INTERVAL_MS, remaining), extra.signal);
-					if (extra.signal.aborted || Date.now() >= deadline) break;
-
-					detection = await ctx.client.detections.getDetection(
-						slug,
-						detection.id,
-					);
-					await report();
-				}
-
-				// The run keeps going server-side; hand back the id either way.
-				if (extra.signal.aborted) {
+				if (unsettled === "cancelled") {
 					return text(
 						`Stopped waiting; the detection is still running.\n${describe(detection)}`,
 					);
 				}
-
-				if (!SETTLED.has(detection.status)) {
+				if (unsettled === "timeout") {
 					return text(
 						`Detection is still running after ${POLL_TIMEOUT_MS / 1000}s.\n` +
 							`${describe(detection)}\n` +
 							"Call get_detection with this id to check again.",
 					);
 				}
-
 				if (detection.status === "failed") {
 					return text(`Detection failed.\n${describe(detection)}`);
 				}

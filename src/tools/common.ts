@@ -4,7 +4,18 @@
  * @module tools/common
  */
 
+import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import type {
+	ServerNotification,
+	ServerRequest,
+} from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+
+/**
+ * The second argument the SDK hands a tool callback: a cancellation signal and
+ * a channel for progress notifications.
+ */
+export type ToolExtra = RequestHandlerExtra<ServerRequest, ServerNotification>;
 
 /**
  * The workspace a tool call acts on.
