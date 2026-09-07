@@ -57,6 +57,7 @@ The server is configured through the environment:
 | `NVISY_API_TOKEN` | Yes | — | API token used to authenticate against the Nvisy API |
 | `NVISY_BASE_URL` | No | `https://api.nvisy.com` | Base URL of the Nvisy API |
 | `NVISY_WORKSPACE` | No | — | Default workspace slug; every tool can override it |
+| `NVISY_FILES_DIR` | No | — | Directory the upload tools may read; overrides the client's workspace |
 
 ## Tools
 
@@ -64,27 +65,32 @@ The server is configured through the environment:
 | --- | --- |
 | `list_workspaces` | Workspaces the API token can access |
 | `list_pipelines` | Redaction pipelines in a workspace |
-| `list_policies` | Policies deciding what is detected and how it is redacted |
+| `describe_pipeline` | What a pipeline detects: its policies and their entity labels |
 | `list_files` | Files stored in a workspace |
-| `list_labels` | Entity labels this deployment can detect |
 | `list_detections` | Detection runs, most recent first |
-| `redact_file` | Run a pipeline over a file and wait for the findings |
+| `upload_file` | Upload a local file into a workspace |
+| `detect` | Run a pipeline over a file and wait for the findings |
 | `get_detection` | Poll a detection's status |
 | `get_analysis` | Summarise what a detection found |
 | `apply_redaction` | Write a redacted copy of the file |
+| `redact` | Upload, detect and redact a local file in one call |
 
-A typical run is `list_files` to find a file, `list_pipelines` to choose a
-pipeline, `redact_file` to detect, `get_analysis` to review, then
-`apply_redaction` to produce the redacted output.
+The short path is `redact`, which takes a local file and produces the redacted
+output. To review the findings before anything is written, use `upload_file`,
+`detect`, `get_analysis` and `apply_redaction` in turn.
 
-Files are uploaded through the Nvisy app or API rather than this server, and no
-tool deletes anything.
+`upload_file` and `redact` read only from the client's workspace directory, or
+from `NVISY_FILES_DIR` when that is set, which takes precedence. A path
+resolving outside, including through a symlink, is refused. Clients that report
+no workspace need `NVISY_FILES_DIR` for uploads to work at all. No tool deletes
+anything.
 
 ## Features
 
 - Modern ES2022+ JavaScript target
 - Full TypeScript support with strict typing
 - Runs standalone over stdio, or embedded as a library
+- Uploads confined to a configured directory
 - Progress reporting and cancellation for long-running detections
 - Built on the official Nvisy TypeScript SDK
 
